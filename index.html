@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="ja" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniAgent Studio - Shopee & note 自律型AIシステム</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            shopee: '#ee4d2d',
+            note: '#2cb696'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* スクロールバーのカスタマイズ */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.5); }
+    .pulse-glow { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans h-full flex overflow-hidden antialiased">
+
+  <!-- 通知トーストUI -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- モーダル基盤 -->
+  <div id="modal-container" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+    <div id="modal-content" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[85vh]"></div>
+  </div>
+
+  <!-- サイドバーナビゲーション -->
+  <aside class="w-64 bg-slate-900/90 border-r border-slate-800 flex flex-col justify-between shrink-0 select-none">
+    <div>
+      <!-- ロゴ & ステータス -->
+      <div class="p-5 border-b border-slate-800/80">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div>
+            <h1 class="font-bold text-sm tracking-wide text-white">OmniAgent Core</h1>
+            <p class="text-xs text-slate-400">Shopee & note 自律AI群</p>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-between text-xs bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+          <span class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span class="text-slate-300 font-medium">エージェント待機中</span>
+          </span>
+          <span class="text-[10px] text-slate-400 px-1.5 py-0.5 rounded bg-slate-800">費用: ¥0~数百円/月</span>
+        </div>
+      </div>
+
+      <!-- メニューリスト -->
+      <nav class="p-3 space-y-1">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all bg-indigo-600/15 text-indigo-400 border border-indigo-500/30">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          自律パイプライン司令塔
+        </button>
+        <button onclick="switchTab('shopee')" id="nav-shopee" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800/60">
+          <span class="w-4 h-4 text-shopee font-black">S</span>
+          Shopee 物販エージェント
+        </button>
+        <button onclick="switchTab('calculator')" id="nav-calculator" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800/60">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          差益・仕入れシミュレーター
+        </button>
+        <button onclick="switchTab('note')" id="nav-note" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800/60">
+          <span class="w-4 h-4 text-note font-black">n</span>
+          note 収益化・執筆エージェント
+        </button>
+        <button onclick="switchTab('cloud')" id="nav-cloud" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800/60">
+          <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+          他PC配布 & クラウド自動化
+        </button>
+      </nav>
+    </div>
+
+    <!-- 設定・環境情報 -->
+    <div class="p-3 border-t border-slate-800 space-y-2">
+      <button onclick="openSettingsModal()" class="w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg text-slate-300 hover:bg-slate-800 transition">
+        <span class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          API設定 & 外部キー
+        </span>
+        <span id="api-status-badge" class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300">Ready</span>
+      </button>
+      <div class="px-3 py-1.5 bg-slate-950/40 rounded border border-slate-800/80 text-[11px] text-slate-400">
+        モデル: <span class="text-indigo-400">Gemini 3 Flash</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- メインコンテンツ領域 -->
+  <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-950">
+
+    <!-- トップヘッダー -->
+    <header class="h-14 border-b border-slate-800 bg-slate-900/60 backdrop-blur px-6 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-3">
+        <h2 id="view-title" class="text-sm font-semibold text-white tracking-wide">自律パイプライン司令塔 (Autonomous Orchestrator)</h2>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">6 Agents Active</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="runCompleteAutonomousPipeline()" id="btn-full-autonomous" class="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-1.5 rounded-xl text-xs font-semibold shadow-md shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+          <svg class="w-3.5 h-3.5 animate-spin hidden" id="spin-pipeline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+          <span>⚡ 全自律パイプラインを1クリック実行</span>
+        </button>
+        <button onclick="exportWorkflowData()" class="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition">
+          データ書出(JSON)
+        </button>
+      </div>
+    </header>
+
+    <!-- タブ別コンテンツコンテナ -->
+    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+      <!-- TAB 1: 司令塔ダッシュボード -->
+      <section id="tab-dashboard" class="space-y-6">
+        <!-- エージェントカード群 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <!-- Agent 1 -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-bold text-shopee bg-shopee/10 px-1.5 py-0.5 rounded">AGENT 1</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              </div>
+              <h4 class="text-xs font-semibold text-white">Shopee市場リサーチ</h4>
+              <p class="text-[11px] text-slate-400 mt-1">ニッチジャンル・競合が少ない穴場商品を発掘</p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
+              <span>Web検索</span>
+              <span class="text-indigo-400">Grounding対応</span>
+            </div>
+          </div>
+          <!-- Agent 2 -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">AGENT 2</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              </div>
+              <h4 class="text-xs font-semibold text-white">展開国分析</h4>
+              <p class="text-[11px] text-slate-400 mt-1">台湾/SG/MY/TH/PH/VNの関税・送料最適化</p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
+              <span>規約・輸送</span>
+              <span class="text-emerald-400">SLS送料算出</span>
+            </div>
+          </div>
+          <!-- Agent 3 -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded">AGENT 3</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              </div>
+              <h4 class="text-xs font-semibold text-white">国内仕入＆利益計算</h4>
+              <p class="text-[11px] text-slate-400 mt-1">Amazon/楽天価格差と純利益シミュレーション</p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
+              <span>利回り</span>
+              <span class="text-amber-400">利益率25%超狙い</span>
+            </div>
+          </div>
+          <!-- Agent 4 -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-bold text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded">AGENT 4</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              </div>
+              <h4 class="text-xs font-semibold text-white">商品掲載＆画像作成</h4>
+              <p class="text-[11px] text-slate-400 mt-1">英語・繁体字SEO文面作成＆Nano Banana画像生成</p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
+              <span>クリエイティブ</span>
+              <span class="text-purple-400">3.1 Flash Image</span>
+            </div>
+          </div>
+          <!-- Agent 5 -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-bold text-note bg-note/10 px-1.5 py-0.5 rounded">AGENT 5</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              </div>
+              <h4 class="text-xs font-semibold text-white">リアルタイム実践記</h4>
+              <p class="text-[11px] text-slate-400 mt-1">「今Shopeeで稼げるか」の実録ログnote記事執筆</p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
+              <span>一次情報</span>
+              <span class="text-note">実証ドキュメント</span>
+            </div>
+          </div>
+          <!-- Agent 6 -->
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-bold text-sky-400 bg-sky-400/10 px-1.5 py-0.5 rounded">AGENT 6</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              </div>
+              <h4 class="text-xs font-semibold text-white">noteトレンド執筆</h4>
+              <p class="text-[11px] text-slate-400 mt-1">note内で購入される高単価ニッチ分野の調査・執筆</p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
+              <span>有料化設計</span>
+              <span class="text-sky-400">フック＆マネタイズ</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 司令塔メインコンソール: タスク設定 & リアルタイム自律ログ -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- 左側：自律実行コントローラー -->
+          <div class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+              自律指示パラメータ（自動展開条件）
+            </h3>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">リサーチ対象・注力カテゴリ</label>
+              <input type="text" id="target-category-input" value="日本のレトロ文房具・限定万年筆・伝統工芸キーホルダー" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+              <p class="text-[10px] text-slate-500 mt-1">※競合が少なく海外マニアに刺さるニッチ日本製品（例: レトロ玩具、特定アニメ限定グッズ、和紙工芸）</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">優先対象国</label>
+                <select id="target-country-select" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                  <option value="Taiwan">台湾 (Shopee TW - 親日・高需要)</option>
+                  <option value="Singapore">シンガポール (Shopee SG - 高客単価)</option>
+                  <option value="Malaysia">マレーシア (Shopee MY - 市場拡大中)</option>
+                  <option value="Philippines">フィリピン (Shopee PH - 英語圏)</option>
+                  <option value="Thailand">タイ (Shopee TH - 日本文化ブーム)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">目標純利益率</label>
+                <input type="number" id="target-profit-margin" value="25" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">note連携モード</label>
+              <select id="note-mode-select" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                <option value="both">Shopee実録記 ＆ noteトレンド有料記事（両方）</option>
+                <option value="realtime_only">リアルタイム実践検証記のみ（一次情報発信）</option>
+                <option value="trend_only">note高単価ノウハウ記事のみ</option>
+              </select>
+            </div>
+
+            <div class="pt-2">
+              <button onclick="runCompleteAutonomousPipeline()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                自律パイプラインを開始
+              </button>
+            </div>
+
+            <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 space-y-1.5 text-[11px] text-slate-400">
+              <div class="text-slate-300 font-semibold flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                完全自律フローの連動設計
+              </div>
+              <p>① Web検索によるニッチ穴場発掘 ➔ ② Amazon/楽天仕入れ原価突合 ➔ ③ Shopee販売価格・国際送料・関税計算 ➔ ④ 現地語出品タイトル・説明文作成 ➔ ⑤ Nano BananaによるEC商品画像生成 ➔ ⑥ note実録記・有料記事の自動執筆</p>
+            </div>
+          </div>
+
+          <!-- 右側：自律活動ストリームログ & 生成成果プレビュー -->
+          <div class="lg:col-span-7 flex flex-col bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 pulse-glow"></div>
+                <span class="text-xs font-semibold text-white">エージェント協働ログ (Agent Activity Stream)</span>
+              </div>
+              <button onclick="clearConsoleLog()" class="text-[11px] text-slate-400 hover:text-slate-200">ログクリア</button>
+            </div>
+            <div id="console-log-box" class="flex-1 p-4 font-mono text-xs text-slate-300 space-y-2 overflow-y-auto max-h-[420px] bg-slate-950/60">
+              <div class="text-slate-500">// 自律型AIマルチエージェント準備完了。各PCまたはクラウドで完全自立運用が可能です。</div>
+              <div class="text-indigo-400">[SYSTEM] エージェント1〜6のスタンバイを確認。待機中...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 直近の生成成果（最新パイプライン結果） -->
+        <div id="latest-output-card" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 hidden space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              パイプライン完了成果物サマリー
+            </h3>
+            <span class="text-xs text-emerald-400 font-medium">全タスク正常生成</span>
+          </div>
+          <div id="latest-output-content" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs"></div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Shopee物販リサーチ & 出品クリエイティブ -->
+      <section id="tab-shopee" class="space-y-6 hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- リサーチ設定 -->
+          <div class="lg:col-span-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <span class="text-shopee font-black">S</span>
+              Shopee ニッチ発掘エージェント
+            </h3>
+            <p class="text-xs text-slate-400">大手が参入しにくい「ニッチ・軽量・高単価・競合極少」の日本製品をリアルタイムWeb検索(Google Search)から発掘します。</p>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">調査ジャンル</label>
+              <input type="text" id="shopee-genre-input" value="伝統文具、限定インク、日本製職人爪切り、レトロアニメ限定食玩" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">ターゲット国</label>
+              <select id="shopee-market-country" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                <option value="台湾 (Shopee TW)">台湾 (Shopee TW - 関税ハードル低、繁体字)</option>
+                <option value="シンガポール (Shopee SG)">シンガポール (Shopee SG - 英語、購買力最強)</option>
+                <option value="マレーシア (Shopee MY)">マレーシア (Shopee MY - SLS送料割安)</option>
+                <option value="タイ (Shopee TH)">タイ (Shopee TH - キャラクターグッズ高需要)</option>
+                <option value="フィリピン (Shopee PH)">フィリピン (Shopee PH - 英語、ホビー熱高)</option>
+              </select>
+            </div>
+
+            <button onclick="runShopeeResearchOnly()" class="w-full bg-shopee hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md shadow-shopee/20">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              ニッチ商品・市場調査を実行
+            </button>
+
+            <!-- 画像生成セクション -->
+            <div class="pt-4 border-t border-slate-800 space-y-3">
+              <h4 class="text-xs font-semibold text-white flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                Gemini 3.1 Flash Image 商品画像生成
+              </h4>
+              <p class="text-[11px] text-slate-400">Shopee出品用のプロフェッショナルな白背景EC写真、または現地受けするアイキャッチをAI生成します。</p>
+              <textarea id="image-prompt-input" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white" placeholder="例: A clean commercial product photograph of a premium Japanese handcrafted fountain pen with cherry blossom engraving, white clean studio background, 4k"></textarea>
+              <button onclick="generateProductImage()" id="btn-generate-img" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-1.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition">
+                <span>画像を生成 (Nano Banana)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- リサーチ結果 & 出品文ドラフト -->
+          <div class="lg:col-span-8 space-y-4">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-semibold text-white">エージェント分析レポート & 出品ドラフト</h3>
+                <button onclick="copyElementText('shopee-result-box')" class="text-xs text-indigo-400 hover:text-indigo-300">テキストをコピー</button>
+              </div>
+
+              <!-- 画像プレビュー枠 -->
+              <div id="product-image-container" class="hidden p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center gap-4">
+                <img id="generated-product-img" src="" alt="Product Visual" class="w-36 h-36 object-cover rounded-lg border border-slate-700">
+                <div class="space-y-1 text-xs">
+                  <span class="px-2 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-300">Gemini 3.1 Flash Image 成果物</span>
+                  <p class="text-slate-300 font-medium" id="img-gen-caption">Shopee掲載用高解像度画像</p>
+                  <p class="text-[11px] text-slate-400">右クリックまたは長押しで画像を保存してShopeeセラーセンターへアップロード可能です。</p>
+                </div>
+              </div>
+
+              <div id="shopee-result-box" class="min-h-[300px] bg-slate-950/70 rounded-xl p-4 text-xs text-slate-200 leading-relaxed font-sans overflow-y-auto max-h-[500px] border border-slate-800">
+                <div class="text-slate-500">左側の「ニッチ商品・市場調査を実行」または「全自律パイプライン」を実行すると、調査結果、現地語出品タイトル・説明文がここに表示されます。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: 差益・仕入れシミュレーター -->
+      <section id="tab-calculator" class="space-y-6 hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- 計算パラメータ入力フォーム -->
+          <div class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Shopee 差益＆利益率リアルタイム計算
+            </h3>
+            <p class="text-xs text-slate-400">Amazon/楽天の仕入れ値から、Shopeeの手数料（決済手数料＋販売手数料）およびSLS（Shopee Logistics Service）送料を引いた純利益を精密算出します。</p>
+
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs text-slate-300 mb-1">仕入れ商品名 (Amazon / 楽天等)</label>
+                <input type="text" id="calc-item-name" value="パイロット 万年筆 カスタム74" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs text-slate-300 mb-1">国内仕入れ価格 (円)</label>
+                  <input type="number" id="calc-buy-jpy" value="11000" oninput="calculateMargin()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-300 mb-1">想定Shopee販売価格 (現地通貨)</label>
+                  <input type="number" id="calc-sell-local" value="3850" oninput="calculateMargin()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs text-slate-300 mb-1">販売国・為替レート</label>
+                  <select id="calc-currency-select" onchange="updateExchangeRateDefault()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                    <option value="TWD" data-rate="4.7">台湾 (1 TWD ≒ 4.7円)</option>
+                    <option value="SGD" data-rate="112.5">シンガポール (1 SGD ≒ 112.5円)</option>
+                    <option value="MYR" data-rate="33.8">マレーシア (1 MYR ≒ 33.8円)</option>
+                    <option value="PHP" data-rate="2.6">フィリピン (1 PHP ≒ 2.6円)</option>
+                    <option value="THB" data-rate="4.3">タイ (1 THB ≒ 4.3円)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-300 mb-1">適用為替レート (円)</label>
+                  <input type="number" step="0.1" id="calc-exchange-rate" value="4.7" oninput="calculateMargin()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">国際送料(SLS等)</label>
+                  <input type="number" id="calc-shipping-jpy" value="950" oninput="calculateMargin()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-white">
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">Shopee手数料計(%)</label>
+                  <input type="number" step="0.1" id="calc-fee-percent" value="9.5" oninput="calculateMargin()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-white">
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">梱包・雑費(円)</label>
+                  <input type="number" id="calc-packaging-jpy" value="150" oninput="calculateMargin()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-white">
+                </div>
+              </div>
+            </div>
+
+            <button onclick="aiInvestigateProductMargin()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              AIによる実勢価格検証＆自動推定
+            </button>
+          </div>
+
+          <!-- 計算結果ディスプレイ -->
+          <div class="lg:col-span-7 space-y-4">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">利益シミュレーション結果</h4>
+
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <div class="text-[11px] text-slate-400">想定売上 (日本円換算)</div>
+                  <div class="text-lg font-bold text-white mt-1" id="res-sales-jpy">¥18,095</div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <div class="text-[11px] text-slate-400">総コスト (仕入+送+手数料)</div>
+                  <div class="text-lg font-bold text-slate-300 mt-1" id="res-cost-jpy">¥13,819</div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/10">
+                  <div class="text-[11px] text-emerald-400">純利益 (手取り)</div>
+                  <div class="text-xl font-black text-emerald-400 mt-1" id="res-net-profit">¥4,276</div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-indigo-500/30 bg-indigo-950/10">
+                  <div class="text-[11px] text-indigo-400">純利益率</div>
+                  <div class="text-xl font-black text-indigo-400 mt-1" id="res-margin-percent">23.6%</div>
+                </div>
+              </div>
+
+              <!-- 内訳グラフ風バー -->
+              <div class="space-y-2">
+                <div class="flex justify-between text-xs text-slate-400">
+                  <span>売上内訳割合</span>
+                  <span id="res-verdict" class="text-emerald-400 font-semibold">【判定: 出品推奨・利益確保可能】</span>
+                </div>
+                <div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden flex">
+                  <div id="bar-buy" class="bg-sky-500 h-full" style="width: 60%;" title="仕入れ原価"></div>
+                  <div id="bar-ship" class="bg-amber-500 h-full" style="width: 6%;" title="国際送料"></div>
+                  <div id="bar-fee" class="bg-purple-500 h-full" style="width: 10%;" title="Shopee手数料"></div>
+                  <div id="bar-profit" class="bg-emerald-500 h-full" style="width: 24%;" title="純利益"></div>
+                </div>
+                <div class="flex items-center gap-4 text-[10px] text-slate-400 pt-1">
+                  <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-sky-500"></span>仕入原価</span>
+                  <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-amber-500"></span>送料/梱包</span>
+                  <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-purple-500"></span>Shopee手数料</span>
+                  <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-emerald-500"></span>純利益</span>
+                </div>
+              </div>
+
+              <!-- AIによる価格助言 -->
+              <div id="calc-ai-advice" class="mt-6 p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 leading-relaxed">
+                <span class="text-indigo-400 font-semibold">💡 エージェントのアドバイス:</span>
+                利益率20%以上を達成しています。台湾市場では日本製筆記具・文具はプレゼント需要が高く、化粧箱付きの丁寧な梱包写真を掲載することで、さらに5〜10%の価格上乗せが期待できます。
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: note 収益化・執筆エージェント -->
+      <section id="tab-note" class="space-y-6 hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- 設定 & コントロール -->
+          <div class="lg:col-span-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <span class="text-note font-black">n</span>
+              note 収益化・執筆エージェント
+            </h3>
+            <p class="text-xs text-slate-400">Shopee物販でのリアルな実績ログや、note内で爆発的に売れているトレンド分野をリサーチし、有料購入に繋がる構成で即執筆します。</p>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">発信タイプ選択</label>
+              <select id="note-type-select" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                <option value="shopee_realtime">1. Shopeeリアルタイム実践検証記 (初月利益・一次情報)</option>
+                <option value="note_trend">2. noteで今稼げる分野の分析＆ノウハウ有料記事</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">記事テーマ・フック</label>
+              <input type="text" id="note-topic-input" value="Shopee越境ECで競合0の日本ニッチ文具を売ったら初月利益◯万円出た全記録" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">記事構成スタイル</label>
+              <select id="note-structure-select" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                <option value="paid_freemium">無料パートで強烈に惹きつけ ➔ 有料部分で具体的手順（推奨）</option>
+                <option value="documentary">ドキュメンタリー調（読者ファン化・フォロー獲得重視）</option>
+                <option value="how_to">完全網羅型ガイド（まとめ記事・SEO狙い）</option>
+              </select>
+            </div>
+
+            <button onclick="runNoteGenerationOnly()" class="w-full bg-note hover:bg-emerald-600 text-white font-medium py-2 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md shadow-note/20">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              note記事をリサーチ＆自動執筆
+            </button>
+          </div>
+
+          <!-- 記事エディタ/プレビュー -->
+          <div class="lg:col-span-8 space-y-4">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-sm font-semibold text-white">完成原稿プレビュー</h3>
+                  <span id="note-word-count" class="text-[11px] text-slate-400">(0文字)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="copyElementText('note-content-box')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-lg transition">本文をコピー</button>
+                  <button onclick="downloadNoteMarkdown()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg transition">Markdown保存</button>
+                </div>
+              </div>
+
+              <div id="note-content-box" class="min-h-[400px] bg-slate-950/70 rounded-xl p-5 text-xs text-slate-200 leading-relaxed font-sans overflow-y-auto max-h-[550px] border border-slate-800 space-y-4">
+                <div class="text-slate-500">「note記事をリサーチ＆自動執筆」を実行すると、キャッチーなタイトル、無料パート（フック・共感・実績）、および有料ライン以降の具体的ノウハウが自動構築されます。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: 他PC配布 & クラウド自動化（月額0〜3000円） -->
+      <section id="tab-cloud" class="space-y-6 hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-12 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-6">
+            <div>
+              <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+                他PCへの配布方法 & クラウド自立実行（完全無料〜月3,000円以内）
+              </h3>
+              <p class="text-xs text-slate-400 mt-1">このシステムは、別のPCやスマートフォンでもブラウザさえあれば追加インストール無しで瞬時に稼働します。また、完全クラウド自動化コードもワンクリックで出力できます。</p>
+            </div>
+
+            <!-- 配布方法ガイド -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div class="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                  <span class="w-5 h-5 rounded-full bg-sky-500/20 flex items-center justify-center text-[11px]">1</span>
+                  別のPCへ送るだけ (0円)
+                </div>
+                <p class="text-xs text-slate-300 font-medium">単一HTMLファイルをコピー</p>
+                <p class="text-[11px] text-slate-400 leading-normal">このHTMLファイルをUSBメモリ、Google Drive、メール等で別のPCへ転送し、ChromeやEdgeでダブルクリックするだけで全く同じ環境が再現されます。</p>
+              </div>
+
+              <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                  <span class="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-[11px]">2</span>
+                  GitHub Pages / Netlify (0円)
+                </div>
+                <p class="text-xs text-slate-300 font-medium">クラウドWebアプリ化</p>
+                <p class="text-[11px] text-slate-400 leading-normal">本HTMLをGitHubのリポジトリにアップロードして「GitHub Pages」を有効化すると、自分専用のURL（例: `https://username.github.io/omni-agent`）が発行され、スマホからも外出先のPCからも即利用可能です。</p>
+              </div>
+
+              <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                  <span class="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-[11px]">3</span>
+                  クラウド定期自律実行 (0円〜月300円)
+                </div>
+                <p class="text-xs text-slate-300 font-medium">GitHub Actions / Cloud Cron</p>
+                <p class="text-[11px] text-slate-400 leading-normal">PCを起動していなくても、毎日決まった時刻にShopee市場の調査とnote執筆を裏側で自動実行するPythonスクリプトを下記から出力できます。</p>
+              </div>
+            </div>
+
+            <!-- クラウド自動化Pythonスクリプト生成 -->
+            <div class="border-t border-slate-800 pt-5 space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs font-semibold text-white">クラウド自動実行用 Python コード生成</h4>
+                  <p class="text-[11px] text-slate-400">GitHub ActionsやCloud Functions、レンタルサーバーで毎日自動実行させるための自立型Pythonスクリプトです。</p>
+                </div>
+                <button onclick="generatePythonCloudScript()" class="bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs transition">
+                  スクリプトを生成して表示
+                </button>
+              </div>
+              <pre id="python-script-box" class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300 overflow-x-auto max-h-64 hidden"></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    /**
+     * OmniAgent Core - アプリケーション状態管理 & 自律エージェントエンジン
+     */
+    const APP_STATE = {
+      apiKey: "", // 空文字の場合はCanvas環境注入APIキーが自動使用される
+      currentTab: "dashboard",
+      isProcessing: false,
+      history: [],
+      lastOutput: null
+    };
+
+    // 初期化ロード
+    window.onload = function() {
+      loadSavedSettings();
+      calculateMargin();
+      logToConsole("OmniAgent Core システム初期化完了。");
+      logToConsole("Gemini 3 Flash & 3.1 Flash Image エンジン待機中。");
+    };
+
+    // タブ切り替え
+    function switchTab(tabId) {
+      APP_STATE.currentTab = tabId;
+      const tabs = ['dashboard', 'shopee', 'calculator', 'note', 'cloud'];
+      tabs.forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        const nav = document.getElementById(`nav-${t}`);
+        if (el) el.classList.toggle('hidden', t !== tabId);
+        if (nav) {
+          if (t === tabId) {
+            nav.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all bg-indigo-600/15 text-indigo-400 border border-indigo-500/30";
+          } else {
+            nav.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800/60";
+          }
+        }
+      });
+
+      const titleMap = {
+        'dashboard': '自律パイプライン司令塔 (Autonomous Orchestrator)',
+        'shopee': 'Shopee 物販特化エージェント (市場調査 & クリエイティブ)',
+        'calculator': '差益・SLS送料・販売手数料シミュレーター',
+        'note': 'note 収益化・リアルタイム実践記執筆エージェント',
+        'cloud': '他PC配布 & クラウド自立実行（0円〜月3,000円）'
+      };
+      document.getElementById('view-title').innerText = titleMap[tabId] || 'OmniAgent';
+    }
+
+    // ログ表示
+    function logToConsole(message, type = "info") {
+      const box = document.getElementById("console-log-box");
+      if (!box) return;
+      const timeStr = new Date().toLocaleTimeString();
+      let colorClass = "text-slate-300";
+      if (type === "agent") colorClass = "text-indigo-400 font-semibold";
+      if (type === "success") colorClass = "text-emerald-400";
+      if (type === "warn") colorClass = "text-amber-400";
+      if (type === "error") colorClass = "text-rose-400";
+
+      const item = document.createElement("div");
+      item.className = colorClass;
+      item.innerHTML = `<span class="text-slate-600">[${timeStr}]</span> ${message}`;
+      box.appendChild(item);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function clearConsoleLog() {
+      const box = document.getElementById("console-log-box");
+      if (box) box.innerHTML = '<div class="text-slate-500">// ログをクリアしました。</div>';
+    }
+
+    // トースト通知（alert禁止ルール遵守）
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toast-container");
+      if (!container) return;
+      const toast = document.createElement("div");
+      toast.className = `px-4 py-3 rounded-xl shadow-xl text-xs font-medium border flex items-center gap-2 pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0 ${
+        type === 'success' ? 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200' :
+        type === 'error' ? 'bg-rose-950/90 border-rose-500/40 text-rose-200' :
+        'bg-slate-900/90 border-slate-700 text-slate-200'
+      }`;
+      toast.innerHTML = message;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // モーダル操作
+    function openSettingsModal() {
+      const container = document.getElementById("modal-container");
+      const content = document.getElementById("modal-content");
+      content.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-semibold text-white">API設定 & 外部PC展開キー</h3>
+            <button onclick="closeModal()" class="text-slate-400 hover:text-white">&times;</button>
+          </div>
+          <p class="text-xs text-slate-400">
+            この環境（Canvas内）ではAPIキーが空欄でも自動実行されます。本ファイルを<strong>他のPCや社外環境</strong>へ持ち出して使用する場合は、ご自身のGoogle AI Studio無料APIキーを入力することで、月額完全無料で無制限に利用できます。
+          </p>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Gemini API Key (任意 / 他PCで動かす場合に入力)</label>
+            <input type="password" id="modal-api-key-input" value="${APP_STATE.apiKey || ''}" placeholder="AIzaSy... (空欄のままでもCanvas内では自動動作)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+            <span>月額想定ランニング費用:</span>
+            <span class="text-emerald-400 font-semibold">無料枠（または月数百円以内）</span>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button onclick="closeModal()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-800">閉じる</button>
+            <button onclick="saveApiKeyFromModal()" class="px-4 py-1.5 rounded-lg text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium">設定を保存</button>
+          </div>
+        </div>
+      `;
+      container.classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("modal-container").classList.add("hidden");
+    }
+
+    function saveApiKeyFromModal() {
+      const val = document.getElementById("modal-api-key-input").value.trim();
+      APP_STATE.apiKey = val;
+      try {
+        localStorage.setItem("omni_agent_api_key", val);
+      } catch (e) {}
+      showToast("API設定を保存しました", "success");
+      closeModal();
+    }
+
+    function loadSavedSettings() {
+      try {
+        const k = localStorage.getItem("omni_agent_api_key");
+        if (k) APP_STATE.apiKey = k;
+      } catch (e) {}
+    }
+
+    /**
+     * Gemini API 呼び出しラッパー関数 (Exponential Backoff実装)
+     */
+    async function callGeminiText(prompt, systemInstruction = "", useSearch = false, retryCount = 0) {
+      const apiKey = APP_STATE.apiKey || "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const payload = {
+        contents: [{ parts: [{ text: prompt }] }]
+      };
+
+      if (useSearch) {
+        payload.tools = [{ "google_search": {} }];
+      }
+
+      if (systemInstruction) {
+        payload.systemInstruction = {
+          parts: [{ text: systemInstruction }]
+        };
+      }
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          if (response.status === 429 && retryCount < 4) {
+            const delay = Math.pow(2, retryCount) * 1000;
+            await new Promise(r => setTimeout(r, delay));
+            return await callGeminiText(prompt, systemInstruction, useSearch, retryCount + 1);
+          }
+          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        const result = await response.json();
+        const candidate = result.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text || "応答を取得できませんでした。";
+
+        let sources = [];
+        const meta = candidate?.groundingMetadata;
+        if (meta && meta.groundingAttributions) {
+          sources = meta.groundingAttributions
+            .map(a => ({ uri: a.web?.uri, title: a.web?.title }))
+            .filter(s => s.uri && s.title);
+        }
+
+        return { text, sources };
+      } catch (err) {
+        if (retryCount < 3) {
+          const delay = Math.pow(2, retryCount) * 1000;
+          await new Promise(r => setTimeout(r, delay));
+          return await callGeminiText(prompt, systemInstruction, useSearch, retryCount + 1);
+        }
+        throw err;
+      }
+    }
+
+    /**
+     * Gemini 3.1 Flash Image (Nano Banana) による画像生成
+     */
+    async function callGeminiImage(prompt, retryCount = 0) {
+      const apiKey = APP_STATE.apiKey || "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`;
+
+      const payload = {
+        contents: [{
+          role: 'user',
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          responseModalities: ['IMAGE'],
+          imageConfig: { aspectRatio: "1:1" }
+        }
+      };
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          if (response.status === 429 && retryCount < 3) {
+            const delay = Math.pow(2, retryCount) * 1200;
+            await new Promise(r => setTimeout(r, delay));
+            return await callGeminiImage(prompt, retryCount + 1);
+          }
+          throw new Error(`Image API Error ${response.status}`);
+        }
+
+        const result = await response.json();
+        const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        if (part && part.inlineData) {
+          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        }
+        return null;
+      } catch (err) {
+        if (retryCount < 2) {
+          await new Promise(r => setTimeout(r, 2000));
+          return await callGeminiImage(prompt, retryCount + 1);
+        }
+        throw err;
+      }
+    }
+
+    /**
+     * ⚡ 全自律パイプライン (1クリックで全エージェントが連動)
+     */
+    async function runCompleteAutonomousPipeline() {
+      if (APP_STATE.isProcessing) {
+        showToast("すでにエージェントが実行中です。完了をお待ちください。", "error");
+        return;
+      }
+
+      APP_STATE.isProcessing = true;
+      document.getElementById('spin-pipeline').classList.remove('hidden');
+      document.getElementById('btn-full-autonomous').classList.add('opacity-75');
+
+      const targetCategory = document.getElementById('target-category-input').value;
+      const targetCountry = document.getElementById('target-country-select').value;
+      const targetProfit = document.getElementById('target-profit-margin').value;
+
+      logToConsole(`=== 【全自律パイプライン始動】 カテゴリ: ${targetCategory} / 対象国: ${targetCountry} ===`, "agent");
+
+      try {
+        // [Step 1] Agent 1 & 2: Shopeeニッチ市場リサーチ & 対象国適性分析 (Google Search Grounding)
+        logToConsole("[Agent 1 & 2] Shopee現地最新トレンド・競合少のニッチ商品・関税・SLS送料を検索中...", "agent");
+        showToast("Step 1/4: Shopee市場と仕入れ価格を調査中...");
+
+        const researchSystem = `あなたは越境EC（Shopee）の最高責任者エージェントです。
+目的: 日本から東南アジア/台湾へ販売するにあたり、「大手セラーが参入しておらず、競合が極めて少なく、軽量で国際送料が安く、現地で高く売れるニッチな日本製品」をリサーチすること。
+出力構成:
+1. 発見した超ニッチ商品名
+2. なぜ競合が少ないか（理由）
+3. ターゲット国（${targetCountry}）での想定販売価格（現地通貨＆日本円）
+4. 日本国内（Amazon/楽天市場）での推定仕入れ価格
+5. 利益確保の根拠`;
+
+        const researchQuery = `Shopee ${targetCountry} で売れる日本のニッチ商品 最新トレンド 競合が少ない ${targetCategory} 国内仕入れ価格 Amazon 楽天`;
+        const researchResult = await callGeminiText(researchQuery, researchSystem, true);
+        logToConsole("[Agent 1 & 2] ニッチ商品と価格差の特定に成功しました。", "success");
+
+        // [Step 3] Agent 3 & 4: 出品文（英語または繁体字）＆ 画像プロンプト生成
+        logToConsole("[Agent 3 & 4] 現地SEO最適化出品タイトル・詳細文・Nano Banana画像プロンプトを生成中...", "agent");
+        showToast("Step 2/4: 出品タイトル・説明文・画像プロンプトを作成中...");
+
+        const listingSystem = `あなたはShopee出品最適化エージェントです。
+指定された商品について、${targetCountry}のバイヤー向けに最高にコンバージョン率の高いリスティング（出品データ）を作成してください。
+対象言語: 台湾なら繁体字中国語、その他シンガポール/マレーシア/フィリピン等は自然で高品質な英語。
+出力フォーマット:
+【Shopee SEO出品タイトル】
+【検索タグ(ハッシュタグ)】
+【商品の魅力・スペック（箇条書き）】
+【画像生成用プロンプト (English)】: 画像生成AI（Gemini 3.1 Flash Image）に入力するための、高解像度EC写真プロンプト。`;
+
+        const listingPrompt = `先ほどリサーチした以下のニッチ商品データを元に、Shopee出品用コンテンツを生成してください：\n\n${researchResult.text}`;
+        const listingResult = await callGeminiText(listingPrompt, listingSystem, false);
+        logToConsole("[Agent 3 & 4] 現地語出品ドラフトが完了しました。", "success");
+
+        // [Step 4] 画像生成 (Gemini 3.1 Flash Image)
+        logToConsole("[Agent 4] Gemini 3.1 Flash Image を呼び出してEC用商品画像を生成中...", "agent");
+        showToast("Step 3/4: 商品クリエイティブ画像を生成中...");
+
+        // プロンプトの抽出（簡易抽出またはデフォルト）
+        let imgPrompt = `Professional studio commercial product shot of a high quality Japanese specialty item related to ${targetCategory}, minimalist white background, e-commerce quality, 8k resolution, photorealistic`;
+        const promptMatch = listingResult.text.match(/【画像生成用プロンプト.*?】[:\s]*([^\n\r]+)/i);
+        if (promptMatch && promptMatch[1]) {
+          imgPrompt = promptMatch[1].trim();
+        }
+
+        let generatedImageBase64 = null;
+        try {
+          generatedImageBase64 = await callGeminiImage(imgPrompt);
+          if (generatedImageBase64) {
+            logToConsole("[Agent 4] 商品クリエイティブの画像生成が完了しました！", "success");
+          }
+        } catch (imgErr) {
+          logToConsole("[Agent 4] 画像生成がスキップされました（プロンプトのみ保持）: " + imgErr.message, "warn");
+        }
+
+        // [Step 5] Agent 5 & 6: note実録記 ＆ noteトレンド有料記事の自動執筆
+        logToConsole("[Agent 5 & 6] noteで稼げる構成に基づき、リアルタイム実践検証記を自動執筆中...", "agent");
+        showToast("Step 4/4: note実践記・有料記事を執筆中...");
+
+        const noteSystem = `あなたはnoteで月数十万円を稼ぎ出すプロのコンテンツマーケター兼Shopee実践者エージェントです。
+目的:
+1. 今回のShopeeリサーチ＆利益計算結果を元に、「実際にShopeeを使ってリアルタイムで稼げるか」を検証した生々しい一次情報ドキュメンタリー記事を執筆すること。
+2. 読者の共感と信頼を生み、有料ライン（ここから先は具体的なリサーチ条件や仕入れ先URL）で課金したくなる構造にすること。
+構成:
+- キャッチーで煽りすぎないタイトル
+- はじめに（なぜ今Shopee輸出×ニッチ品なのか）
+- 今回検証した市場データと実際の利益計算シミュレーション（一次情報）
+- 【ここから先は有料エリアです】
+- 有料パート：他人が真似できないブルーオーシャン選定の裏技＆継続自動化ロードマップ`;
+
+        const notePrompt = `以下のShopeeリサーチ成果を元に、今すぐnoteに投稿できる高品質な記事を執筆してください：\n\n市場データ:\n${researchResult.text}\n\n出品データ:\n${listingResult.text}`;
+        const noteResult = await callGeminiText(notePrompt, noteSystem, false);
+        logToConsole("[Agent 5 & 6] note記事の執筆が完了しました！", "success");
+
+        // 全結果の統合とUI反映
+        APP_STATE.lastOutput = {
+          research: researchResult.text,
+          sources: researchResult.sources,
+          listing: listingResult.text,
+          imageUrl: generatedImageBase64,
+          noteArticle: noteResult.text,
+          timestamp: new Date().toLocaleString()
+        };
+
+        // 各タブのUIに反映
+        renderPipelineOutputs();
+        logToConsole("=== 【全自律パイプライン完了】全成果物を生成し保存しました ===", "success");
+        showToast("🎉 全自律パイプラインが正常に完了しました！", "success");
+
+      } catch (error) {
+        logToConsole(`パイプライン実行エラー: ${error.message}`, "error");
+        showToast(`エラーが発生しました: ${error.message}`, "error");
+      } finally {
+        APP_STATE.isProcessing = false;
+        document.getElementById('spin-pipeline').classList.add('hidden');
+        document.getElementById('btn-full-autonomous').classList.remove('opacity-75');
+      }
+    }
+
+    // パイプライン出力結果をUIに反映
+    function renderPipelineOutputs() {
+      if (!APP_STATE.lastOutput) return;
+
+      // 司令塔サマリー
+      const card = document.getElementById('latest-output-card');
+      const content = document.getElementById('latest-output-content');
+      card.classList.remove('hidden');
+
+      content.innerHTML = `
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div class="font-bold text-shopee flex items-center justify-between">
+            <span>🛍️ Shopee リサーチ＆出品</span>
+            <button onclick="switchTab('shopee')" class="text-[10px] text-indigo-400 hover:underline">詳細を開く &rarr;</button>
+          </div>
+          <div class="text-slate-300 line-clamp-4 whitespace-pre-line">${APP_STATE.lastOutput.listing}</div>
+        </div>
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div class="font-bold text-note flex items-center justify-between">
+            <span>📝 note 執筆原稿</span>
+            <button onclick="switchTab('note')" class="text-[10px] text-indigo-400 hover:underline">詳細を開く &rarr;</button>
+          </div>
+          <div class="text-slate-300 line-clamp-4 whitespace-pre-line">${APP_STATE.lastOutput.noteArticle}</div>
+        </div>
+      `;
+
+      // Shopeeタブ反映
+      document.getElementById('shopee-result-box').innerHTML = `
+        <div class="space-y-4">
+          <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+            <h4 class="font-bold text-shopee mb-1">【市場・ニッチ調査レポート】</h4>
+            <div class="whitespace-pre-line">${escapeHtml(APP_STATE.lastOutput.research)}</div>
+          </div>
+          <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+            <h4 class="font-bold text-indigo-400 mb-1">【現地語リスティング＆SEOデータ】</h4>
+            <div class="whitespace-pre-line">${escapeHtml(APP_STATE.lastOutput.listing)}</div>
+          </div>
+        </div>
+      `;
+
+      // 画像プレビュー反映
+      if (APP_STATE.lastOutput.imageUrl) {
+        document.getElementById('product-image-container').classList.remove('hidden');
+        document.getElementById('generated-product-img').src = APP_STATE.lastOutput.imageUrl;
+      }
+
+      // noteタブ反映
+      document.getElementById('note-content-box').innerHTML = `<div class="whitespace-pre-line">${escapeHtml(APP_STATE.lastOutput.noteArticle)}</div>`;
+      document.getElementById('note-word-count').innerText = `(${APP_STATE.lastOutput.noteArticle.length}文字)`;
+    }
+
+    /**
+     * Shopee 単体リサーチ実行
+     */
+    async function runShopeeResearchOnly() {
+      const genre = document.getElementById('shopee-genre-input').value;
+      const country = document.getElementById('shopee-market-country').value;
+      const resultBox = document.getElementById('shopee-result-box');
+
+      resultBox.innerHTML = `<div class="flex items-center gap-2 text-indigo-400"><svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> リアルタイムWeb検索とエージェント分析を実行中...</div>`;
+
+      try {
+        const prompt = `Shopee ${country} において、日本の「${genre}」に関連する、競合が極めて少ないが確実に需要があるニッチ製品を発掘してください。また、Amazon/楽天での仕入れ価格と想定利益率、現地のSEO出品タイトル案（現地公用語）も併せて提示してください。`;
+        const res = await callGeminiText(prompt, "あなたはShopee専門の敏腕バイヤー・マーケティングエージェントです。", true);
+
+        resultBox.innerHTML = `
+          <div class="space-y-3">
+            <div class="whitespace-pre-line">${escapeHtml(res.text)}</div>
+            ${res.sources.length > 0 ? `
+              <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400">
+                <span class="font-semibold text-slate-300">参考リサーチ元 (Web):</span>
+                <ul class="list-disc list-inside mt-1 space-y-0.5">
+                  ${res.sources.map(s => `<li><a href="${s.uri}" target="_blank" class="text-indigo-400 hover:underline">${escapeHtml(s.title || s.uri)}</a></li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+        `;
+        showToast("Shopeeリサーチが完了しました", "success");
+      } catch (err) {
+        resultBox.innerHTML = `<div class="text-rose-400">エラーが発生しました: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    /**
+     * 単独画像生成 (Nano Banana)
+     */
+    async function generateProductImage() {
+      const prompt = document.getElementById('image-prompt-input').value.trim();
+      if (!prompt) {
+        showToast("画像生成プロンプトを入力してください", "error");
+        return;
+      }
+
+      const btn = document.getElementById('btn-generate-img');
+      btn.disabled = true;
+      btn.innerText = "画像生成中 (Nano Banana)...";
+
+      try {
+        const base64 = await callGeminiImage(prompt);
+        if (base64) {
+          document.getElementById('product-image-container').classList.remove('hidden');
+          document.getElementById('generated-product-img').src = base64;
+          showToast("商品画像を生成しました！", "success");
+        } else {
+          showToast("画像の生成結果が取得できませんでした。", "error");
+        }
+      } catch (err) {
+        showToast("画像生成エラー: " + err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "画像を生成 (Nano Banana)";
+      }
+    }
+
+    /**
+     * 差益・利益率シミュレーター計算
+     */
+    function updateExchangeRateDefault() {
+      const sel = document.getElementById('calc-currency-select');
+      const rate = sel.options[sel.selectedIndex].getAttribute('data-rate');
+      document.getElementById('calc-exchange-rate').value = rate;
+      calculateMargin();
+    }
+
+    function calculateMargin() {
+      const buyJpy = parseFloat(document.getElementById('calc-buy-jpy').value) || 0;
+      const sellLocal = parseFloat(document.getElementById('calc-sell-local').value) || 0;
+      const rate = parseFloat(document.getElementById('calc-exchange-rate').value) || 1;
+      const shipJpy = parseFloat(document.getElementById('calc-shipping-jpy').value) || 0;
+      const feePercent = parseFloat(document.getElementById('calc-fee-percent').value) || 0;
+      const packJpy = parseFloat(document.getElementById('calc-packaging-jpy').value) || 0;
+
+      // 日本円想定売上
+      const salesJpy = sellLocal * rate;
+      // Shopee手数料（売上に対して）
+      const feeJpy = salesJpy * (feePercent / 100);
+      // 総コスト
+      const totalCost = buyJpy + shipJpy + packJpy + feeJpy;
+      // 純利益
+      const netProfit = salesJpy - totalCost;
+      // 純利益率
+      const margin = salesJpy > 0 ? (netProfit / salesJpy) * 100 : 0;
+
+      // UI反映
+      document.getElementById('res-sales-jpy').innerText = `¥${Math.round(salesJpy).toLocaleString()}`;
+      document.getElementById('res-cost-jpy').innerText = `¥${Math.round(totalCost).toLocaleString()}`;
+      document.getElementById('res-net-profit').innerText = `¥${Math.round(netProfit).toLocaleString()}`;
+      document.getElementById('res-margin-percent').innerText = `${margin.toFixed(1)}%`;
+
+      // バー割合
+      if (salesJpy > 0) {
+        const buyPct = Math.max(0, Math.min(100, (buyJpy / salesJpy) * 100));
+        const shipPct = Math.max(0, Math.min(100, ((shipJpy + packJpy) / salesJpy) * 100));
+        const feePct = Math.max(0, Math.min(100, (feeJpy / salesJpy) * 100));
+        const profitPct = Math.max(0, Math.min(100, (netProfit / salesJpy) * 100));
+
+        document.getElementById('bar-buy').style.width = `${buyPct}%`;
+        document.getElementById('bar-ship').style.width = `${shipPct}%`;
+        document.getElementById('bar-fee').style.width = `${feePct}%`;
+        document.getElementById('bar-profit').style.width = `${profitPct}%`;
+      }
+
+      const verdict = document.getElementById('res-verdict');
+      if (margin >= 25) {
+        verdict.className = "text-emerald-400 font-semibold";
+        verdict.innerText = "【判定: 超優良・即出品推奨 (利益率25%超)】";
+      } else if (margin >= 15) {
+        verdict.className = "text-indigo-400 font-semibold";
+        verdict.innerText = "【判定: 合格ライン・安定利益確保可能】";
+      } else if (margin > 0) {
+        verdict.className = "text-amber-400 font-semibold";
+        verdict.innerText = "【判定: 薄利要注意・高付加価値化が必要】";
+      } else {
+        verdict.className = "text-rose-400 font-semibold";
+        verdict.innerText = "【判定: 赤字・価格見直しまたは仕入先変更要】";
+      }
+    }
+
+    async function aiInvestigateProductMargin() {
+      const item = document.getElementById('calc-item-name').value;
+      const adviceBox = document.getElementById('calc-ai-advice');
+      adviceBox.innerHTML = `<span class="text-indigo-400">AIリサーチ中...</span> Amazon/楽天の実売相場とShopeeでの高値取引実績を調べています...`;
+
+      try {
+        const prompt = `商品名「${item}」について、現在の日本国内（Amazon、楽天市場）での最安仕入れ相場と、Shopee（台湾または東南アジア）での現地適正販売価格を調査し、利益を最大化するための梱包・オプション提案を簡潔に回答してください。`;
+        const res = await callGeminiText(prompt, "あなたは物販利益計算のスペシャリストです。", true);
+        adviceBox.innerHTML = `<span class="text-indigo-400 font-semibold">💡 エージェントのリアルタイム相場助言:</span><br>${escapeHtml(res.text)}`;
+        showToast("相場分析が完了しました", "success");
+      } catch (err) {
+        adviceBox.innerText = "分析エラー: " + err.message;
+      }
+    }
+
+    /**
+     * note 単独リサーチ & 執筆実行
+     */
+    async function runNoteGenerationOnly() {
+      const type = document.getElementById('note-type-select').value;
+      const topic = document.getElementById('note-topic-input').value;
+      const structure = document.getElementById('note-structure-select').value;
+      const contentBox = document.getElementById('note-content-box');
+
+      contentBox.innerHTML = `<div class="flex items-center gap-2 text-indigo-400"><svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> note市場の売れ筋・トレンドを調査し、高成約率の記事を執筆中...</div>`;
+
+      try {
+        let systemPrompt = "";
+        let userPrompt = "";
+
+        if (type === 'shopee_realtime') {
+          systemPrompt = `あなたはShopee実践者であり、リアルな実践ログをnoteで公開して熱狂的なフォロワーと有料記事売上を獲得している人気クリエイターです。
+構成:
+1. 読者の目を釘付けにするタイトル（数字を入れる）
+2. なぜいま国内物販ではなくShopeeなのか？（円安、無在庫・小資本、競合の盲点）
+3. 【実録】今回仕入れて販売検証したニッチジャンルのリアルな数字（仕入れ値、販売値、純利益）
+4. 初心者が陥る関税・SLS配送の罠と回避策
+5. ─── ここから有料エリア (¥980) ───
+6. 実際に利益率30%を超えた具体的な「3つのニッチキーワード」と仕入れ先リスト
+7. 自動化のためのAIプロンプト全公開`;
+
+          userPrompt = `テーマ: 「${topic}」について、上記の構成でnote記事を執筆してください。文体は読者を引き込む知的で誠実な語り口にしてください。`;
+        } else {
+          systemPrompt = `あなたはnote・Brain・Tips等のデジタルコンテンツ販売でトップの収益を誇るアナリスト兼ライターです。
+今note内で実際に売れている高単価ジャンル（副業、ニッチノウハウ、海外越境EC、AI活用など）を分析し、購入者が「これは値段以上の価値がある」と確信する実践的有料記事を執筆してください。`;
+
+          userPrompt = `テーマ: 「${topic}」\n構成スタイル: ${structure}\nWeb検索で最新のnote稼げる分野トレンドを参考にしながら、即公開できる完全原稿を作成してください。`;
+        }
+
+        const res = await callGeminiText(userPrompt, systemPrompt, true);
+        contentBox.innerHTML = `<div class="whitespace-pre-line">${escapeHtml(res.text)}</div>`;
+        document.getElementById('note-word-count').innerText = `(${res.text.length}文字)`;
+        showToast("note記事が完成しました！", "success");
+      } catch (err) {
+        contentBox.innerHTML = `<div class="text-rose-400">執筆エラー: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    /**
+     * クラウド自動実行用 Python コード生成
+     */
+    function generatePythonCloudScript() {
+      const box = document.getElementById('python-script-box');
+      box.classList.remove('hidden');
+
+      const pyCode = `# ========================================================
+# OmniAgent - Shopee & note 自律実行クラウドスクリプト
+# 【ランニング費用】
+# - GitHub Actions / Google Cloud Run / Render: 無料枠で運用可能
+# - Gemini API (gemini-3-flash-preview): 月額数百円〜3000円以内
+# ========================================================
+
+import os
+import requests
+import json
+import time
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+MODEL_NAME = "gemini-3-flash-preview"
+API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={GEMINI_API_KEY}"
+
+def run_agent_task(prompt, system_instruction="", use_search=False):
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    if use_search:
+        payload["tools"] = [{"google_search": {}}]
+    if system_instruction:
+        payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(API_URL, json=payload, headers=headers)
+    if response.status_code == 200:
+        data = response.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    else:
+        raise Exception(f"API Error {response.status_code}: {response.text}")
+
+def main():
+    print("🚀 [OmniAgent] Shopee & note 自立型パイプライン開始...")
+    
+    # 1. Shopeeニッチ市場調査
+    search_prompt = "Shopee台湾・東南アジアで今売れる日本の競合ゼロ・ニッチ製品とAmazon仕入価格差"
+    research_result = run_agent_task(search_prompt, "あなたはShopee専門調査エージェントです。", use_search=True)
+    print("✅ [Agent 1] 市場リサーチ完了")
+
+    # 2. note実践記事の自動生成
+    note_prompt = f"以下のShopeeリサーチ結果を元に、リアルタイム実践検証記note記事を執筆してください:\\n{research_result}"
+    article = run_agent_task(note_prompt, "あなたはnote収益化プロエージェントです。")
+    print("✅ [Agent 2] note原稿作成完了")
+
+    # 3. 成果物のファイル保存（またはWebhookでDiscordやLINE、Slack等に自動通知）
+    with open("shopee_note_output.md", "w", encoding="utf-8") as f:
+        f.write("# Shopee & note 自動生成レポート\\n\\n")
+        f.write("## 1. 市場調査\\n" + research_result + "\\n\\n")
+        f.write("## 2. note完成原稿\\n" + article)
+
+    print("🎉 [OmniAgent] 全タスク完了。shopee_note_output.md に出力しました。")
+
+if __name__ == "__main__":
+    main()
+`;
+
+      box.textContent = pyCode;
+      showToast("クラウド自動実行スクリプトを生成しました", "success");
+    }
+
+    /**
+     * ユーティリティ: コピー＆エクスポート
+     */
+    function copyElementText(elementId) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const text = el.innerText;
+      
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast("クリップボードにコピーしました", "success");
+      } catch (e) {
+        showToast("コピーに失敗しました", "error");
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    }
+
+    function downloadNoteMarkdown() {
+      const el = document.getElementById('note-content-box');
+      if (!el) return;
+      const text = el.innerText;
+      const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `note_shopee_article_${new Date().toISOString().slice(0,10)}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Markdownファイルを保存しました", "success");
+    }
+
+    function exportWorkflowData() {
+      const data = {
+        appState: APP_STATE,
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `omni_agent_data_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("ワークフローデータをJSON保存しました", "success");
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
